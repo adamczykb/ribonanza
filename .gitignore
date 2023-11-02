@@ -1,0 +1,11 @@
+*.csv
+dms_*/
+2a3_*/
+.mypy*/
+HotKnots/
+*.pckl
+*.pth
+*.pkl
+*.pt
+*.zip
+*.pyc
