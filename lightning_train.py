@@ -98,7 +98,7 @@ class RibonanzaLightning(pl.LightningModule):
         optimizer = Adam(self.model.parameters(), lr=self.lr)
         return optimizer
 
-    def predict_step(self, batch, batch_idx: int, dataloader_idx: int = None):
+    def predict_step(self, batch, batch_idx: int, dataloader_idx: int ):
         seq, target = zip(*batch)
         seq = torch.stack(seq).to("cuda:0")  # mock target used only for mask
         target = torch.stack(target).to("cuda:0")

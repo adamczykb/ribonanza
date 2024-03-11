@@ -8,7 +8,7 @@ from data_class import RibonanzaDataset, Sequence, SequenceEntity, SequenceFile
 
 
 def dump(
-    dms_path: path,
+    dms_path,
     sequences,
 ):
     with open(dms_path, "wb") as afile:

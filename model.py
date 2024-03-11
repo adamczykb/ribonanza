@@ -22,8 +22,8 @@ class MultiHeadAttention(nn.Module):
         attn_scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
 
         if mask is not None:
-            attn_scores = attn_scores.to("cuda:0").masked_fill(mask.to("cuda:0") == 0, -1e9)
-            # attn_scores = attn_scores.masked_fill(mask == 0, -1e9)
+            # attn_scores = attn_scores.to("cuda:0").masked_fill(mask.to("cuda:0") == 0, -1e9)
+            attn_scores = attn_scores.masked_fill(mask == 0, -1e9)
         attn_probs = torch.softmax(attn_scores, dim=-1)
         output = torch.matmul(attn_probs, V)
         return output
@@ -72,8 +72,8 @@ class PositionalEncoding(nn.Module):
         self.register_buffer("pe", pe.unsqueeze(0))
 
     def forward(self, x):
-        # return x + self.pe[:, : x.size(1)]
-        return x.to("cuda:0") + self.pe[:, : x.size(1)]
+        return x + self.pe[:, : x.size(1)]
+        # return x.to("cuda:0") + self.pe[:, : x.size(1)]
 
 
 class Embedding(nn.Module):
@@ -87,8 +87,8 @@ class Embedding(nn.Module):
         )
 
     def forward(self, x):
-        # x = self.encoder(x)
-        x = self.encoder(x.to(device="cuda:0"))
+        x = self.encoder(x)
+        # x = self.encoder(x.to(device="cuda:0"))
         return x
 
 

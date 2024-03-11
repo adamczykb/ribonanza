@@ -1,10 +1,10 @@
 import torch.optim as optim
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader,random_split
 from data import load, load_dataset
 from model import RibonanzaTransformer
 import torch.nn as nn
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter 
 src_vocab_size = 2
 tgt_vocab_size = 2
 d_model = 2048
@@ -17,11 +17,7 @@ NUM_ACCUMULATION_STEPS = 200
 
 class Test:
     def collate_fn(self, data):
-        """
-        data: is a list of tuples with (example, label, length)
-                where 'example' is a tensor of arbitrary shape
-                and label/length are scalars
-        """
+       
         features, targets = zip(*data)
         max_len = max([i.shape[0] for i in features])
         new_shaped_feature = torch.zeros(len(data), max_len, 2)
@@ -129,6 +125,6 @@ class Test:
             self.transformer.parameters(), lr=0.00001, betas=(0.9, 0.98), eps=1e-9
         )
 
-        self.d_train, self.d_test = torch.utils.data.random_split(
+        self.d_train, self.d_test = random_split(
             self.dataset, [0.8, 0.2], generator=torch.Generator().manual_seed(42)
         )

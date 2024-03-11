@@ -9,3 +9,9 @@ HotKnots/
 *.pt
 *.zip
 *.pyc
+lightning_logs/
+runs/
+tb_logs/
+.vscode/
+.venv/
+__pycache__/

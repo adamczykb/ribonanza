@@ -1,7 +1,8 @@
 import time
 import torch
-from lightning_train import RibonanzaLightning
 import pytorch_lightning as pl
+
+from lightning_train import RibonanzaLightning
 from ribonanza_data_module import RibonanzaDataModule
 from data import load, load_dataset, load_eval_dataset
 from torch.utils.data import DataLoader

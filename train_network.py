@@ -1,12 +1,14 @@
 import time
 import torch
-from lightning_train import RibonanzaLightning
 import pytorch_lightning as pl
+
+from lightning_train import RibonanzaLightning
 from ribonanza_data_module import RibonanzaDataModule
+
 if __name__ == "__main__":
     torch.set_float32_matmul_precision("high")
 
-    model = RibonanzaLightning( lr=0.00001)
+    model = RibonanzaLightning( lr=0.001)
 
     data = RibonanzaDataModule(batch_size=16, num_workers=4)
     
