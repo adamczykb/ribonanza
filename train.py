@@ -1,10 +1,12 @@
 import torch.optim as optim
-import torch
-from torch.utils.data import DataLoader,random_split
-from data import load, load_dataset
-from model import RibonanzaTransformer
 import torch.nn as nn
-from torch.utils.tensorboard import SummaryWriter 
+import torch
+
+from torch.utils.data import DataLoader, random_split
+from loaders import load, load_dataset
+from scratch_model import RibonanzaTransformer
+
+# from torch.utils.tensorboard import SummaryWriter
 src_vocab_size = 2
 tgt_vocab_size = 2
 d_model = 2048
@@ -15,9 +17,10 @@ max_seq_length = 457
 dropout = 0.3
 NUM_ACCUMULATION_STEPS = 200
 
+
 class Test:
+
     def collate_fn(self, data):
-       
         features, targets = zip(*data)
         max_len = max([i.shape[0] for i in features])
         new_shaped_feature = torch.zeros(len(data), max_len, 2)
@@ -52,7 +55,7 @@ class Test:
                 shuffle=False,
                 collate_fn=self.collate_fn,
             )
-            for idx,iter in enumerate(train_dataloader):
+            for idx, iter in enumerate(train_dataloader):
                 seq, target = iter
                 output = self.transformer(seq, target)
                 loss = self.criterion(
@@ -60,7 +63,9 @@ class Test:
                     target.where(target > -4, torch.tensor(0.0)).to("cuda:0"),
                 )
                 loss.backward()
-                if ((idx + 1) % NUM_ACCUMULATION_STEPS == 0) or (idx + 1 == len(train_dataloader)):
+                if ((idx + 1) % NUM_ACCUMULATION_STEPS == 0) or (
+                    idx + 1 == len(train_dataloader)
+                ):
                     self.optimizer.step()
                     self.optimizer.zero_grad()
 
@@ -95,9 +100,9 @@ class Test:
                 seq, target = iter
                 output = self.transformer(seq, target)
                 loss = self.criterion(
-                        output.contiguous().to("cuda:0"),
-                        target.where(target > -4, torch.tensor(0.0)).to("cuda:0"),
-                    )
+                    output.contiguous().to("cuda:0"),
+                    target.where(target > -4, torch.tensor(0.0)).to("cuda:0"),
+                )
                 # print(output)
                 # self.writer.add_graph(self.transformer, seq)
                 # self.writer.close()
@@ -108,7 +113,7 @@ class Test:
 
     def __init__(self):
         self.dataset = load_dataset(load("/opt/proj/data/processed_tiny.pkl"))
-        self.writer = SummaryWriter()
+        # self.writer = SummaryWriter()
         self.transformer = RibonanzaTransformer(
             src_vocab_size,
             tgt_vocab_size,

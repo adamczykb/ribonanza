@@ -1,32 +1,69 @@
 import gc
+import pyspark
 import pandas as pd
+
+from pyspark.sql import SparkSession
+
 from tqdm import tqdm
-from data_class import Sequence, SequenceEntity, SequenceFile
-from data import dump
+from data_types import Sequence, SequenceEntity
+from loaders import dump
 
-
-def prepare_dataset():
-    train_df = pd.read_csv("/opt/proj/train_data.csv")
-    train_df = train_df[train_df["SN_filter"].values > 0]
-    train_df = train_df[train_df.columns.drop(list(train_df.filter(regex="_error_")))]
-    gc.collect()
+def prepare_dataset(csv_path: str) -> [str, str]:
+    spark = SparkSession.builder \
+        .appName("ribonanza") \
+        .getOrCreate()
+    
+    train_df = spark.read.format("csv") \
+        .option("header", "true") \
+        .option("inferSchema", "true") \
+        .load(csv_path) \
+        .set_index('sequence')
+        
+    train_df = train_df[train_df["SN_filter"].values > 0] 
+    train_df = train_df.columns.drop(train_df.columns.filter(regex="_error_"))
+    
     df_2A3 = train_df.loc[train_df.experiment_type == "2A3_MaP"]
     df_DMS = train_df.loc[train_df.experiment_type == "DMS_MaP"]
-    df = df_2A3.merge(
-        df_DMS,
-        suffixes=("_2a3", "_dms"),
-        how="inner",
-        on=["sequence_id"],
-    )
+    
+    pk50_df = spark.read.format("csv") \
+        .option("header", "true") \
+        .option("inferSchema", "true") \
+        .load("data/csv/PK50_silico_predictions.csv") \
+        .rename(columns={'hotknots_mfe': 'hotknots'}) \
+        ["sequence","hotknots"]
+    pk90_df = spark.read.format("csv") \
+        .option("header", "true") \
+        .option("inferSchema", "true") \
+        .load("data/csv/PK90_silico_predictions.csv") \
+        .rename(columns={'hotknots_mfe': 'hotknots'}) \
+        .set_index('sequence')["sequence","hotknots"]
+    r1_df = spark.read.format("csv") \
+        .option("header", "true") \
+        .option("inferSchema", "true") \
+        .load("data/csv/R1_silico_predictions.csv") \
+        .set_index('sequence')["sequence","hotknots"]
+    gpn15k_df = spark.read.format("csv") \
+        .option("header", "true") \
+        .option("inferSchema", "true") \
+        .load("data/csv/GPN15k_silico_predictions.csv") \
+        .set_index('sequence')["sequence","hotknots"]
+    
+    pairing = pd.concat([pk50_df,pk90_df,r1_df,gpn15k_df])
+
+    
+    df_2A3 = df_2A3.join(pairing, on='key')
+    df_DMS = df_DMS.join(pairing, on='key')
+
+    del pk50_df,pk90_df,r1_df,gpn15k_df,pairing,train_df
     gc.collect()
-    sequences: list[SequenceFile] = []
-    process_structure(df, sequences)
-    return sequences
+
+    _2a3_csv_path = process_structure(df_2A3)
+    dms_csv_path = process_structure(df_DMS)
+    return _2a3_csv_path, dms_csv_path
 
 
-def process_structure(df, output_arr: list[SequenceFile]):
-    reac_col_dms = [i for i in list(df.columns) if "reactivity" in i and "_dms" in i]
-    reac_col_2a3 = [i for i in list(df.columns) if "reactivity" in i and "_2a3" in i]
+def process_structure(df: pyspark.pandas.frame.DataFrame) -> str:
+    reac_col = [i for i in list(df.columns) if "reactivity" in i]
     for index, sequence_row in tqdm(df.iterrows(), total=df.shape[0]):
         sequences: list[Sequence] = []
         row_series = sequence_row
@@ -44,12 +81,9 @@ def process_structure(df, output_arr: list[SequenceFile]):
                         categories=["P", "Y"],
                     )
                 ).astype(int),
-                row_series[reac_col_dms[: len(temp["sequence"])]]
+                row_series[reac_col[: len(temp["sequence"])]]
                 .reset_index(drop=True)
                 .rename("dms"),
-                row_series[reac_col_2a3[: len(temp["sequence"])]]
-                .reset_index(drop=True)
-                .rename("2a3"),
             ],
             axis=1,
         )
@@ -74,6 +108,7 @@ def process_structure(df, output_arr: list[SequenceFile]):
         if len(sequence_entity) > 2:
             sequences.append(Sequence(sequence_entity))
         output_arr.append(SequenceFile(sequences))
+    return ""
 
 
 if __name__ == "__main__":

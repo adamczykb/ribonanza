@@ -1,11 +1,11 @@
 from matplotlib import pyplot as pt
 import numpy as np
 
-from data_class import SequenceFile
+from data_types import Sequence
 
 
 
-def map_reduce_length(new_d: list[SequenceFile], new_a: list[SequenceFile]):
+def map_reduce_length(new_d: list[Sequence], new_a: list[Sequence]):
     sizes = dict({})
     for i in new_d:
         for j in i.sequences:
@@ -25,13 +25,13 @@ def map_reduce_length(new_d: list[SequenceFile], new_a: list[SequenceFile]):
     return new_d_stats, new_a_stats
 
 
-def get_longest_sequence_size(new_d: list[SequenceFile], new_a: list[SequenceFile]):
+def get_longest_sequence_size(new_d: list[Sequence], new_a: list[Sequence]):
     new_d_stats, new_a_stats = map_reduce_length(new_d, new_a)
 
     return max(max(new_a_stats[:, 0]), max(new_d_stats[:, 0]))
 
 
-def sequence_cardinality(new_d: list[SequenceFile], new_a: list[SequenceFile]):
+def sequence_cardinality(new_d: list[Sequence], new_a: list[Sequence]):
     new_d_stats, new_a_stats = map_reduce_length(new_d, new_a)
     pt.bar(new_a_stats[:, 0], new_a_stats[:, 1])
     pt.bar(new_d_stats[:, 0], new_d_stats[:, 1])

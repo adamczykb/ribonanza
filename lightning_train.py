@@ -1,10 +1,10 @@
 import torch
-from data import load
-from model import RibonanzaTransformer
-import pytorch_lightning as pl
 import torch.nn as nn
-from torch.optim import Adam
+import pytorch_lightning as pl
 
+from loaders import load
+from scratch_model import RibonanzaTransformer
+from torch.optim import Adam
 from stats import get_longest_sequence_size
 
 src_vocab_size = 2
@@ -16,7 +16,8 @@ d_ff = 2048
 max_seq_length = 457
 dropout = 0.1
 
-class RibonanzaLightning(pl.LightningModule):
+
+class Ribonanza(pl.LightningModule):
     def __init__(self, lr=0.0001):
         super().__init__()
 
@@ -39,7 +40,6 @@ class RibonanzaLightning(pl.LightningModule):
 
     def forward(self, seq, target):
         return self.model(seq, target)
-    
 
     def training_step(self, batch, batch_idx):
         seq, target = zip(*batch)
@@ -98,7 +98,7 @@ class RibonanzaLightning(pl.LightningModule):
         optimizer = Adam(self.model.parameters(), lr=self.lr)
         return optimizer
 
-    def predict_step(self, batch, batch_idx: int, dataloader_idx: int ):
+    def predict_step(self, batch, batch_idx: int, dataloader_idx: int):
         seq, target = zip(*batch)
         seq = torch.stack(seq).to("cuda:0")  # mock target used only for mask
         target = torch.stack(target).to("cuda:0")
