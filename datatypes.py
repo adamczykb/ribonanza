@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 class ResidueType(Enum):
     ADEINE = 1
-    THYMINE = 2
+    CYTHOSINE = 2
     URACIL = 3
     GUANINE = 4
 
@@ -28,7 +28,7 @@ class SequenceEntity:
 @dataclass
 class Sequence:
     sequence: list[SequenceEntity]
-    sequence_id:str
+    sequence_id: str
 
     def __len__(self):
         return len(self.sequence)

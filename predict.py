@@ -45,7 +45,6 @@ def collate_fn(data):
     return new_shaped_feature, new_shaped_target
 
 
-
 def predict(sequence, model_2a3, model_dms, id_from):
     return pd.concat(
         [

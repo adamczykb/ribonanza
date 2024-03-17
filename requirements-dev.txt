@@ -1,3 +1,5 @@
 stubs==1.0.0
 pandas-stubs==2.2.0
 types-tqdm==4.66.0
+mypy==1.8.0
+

@@ -1,11 +1,10 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
-
-from loaders import load
-from scratch_model import RibonanzaTransformer
+from transformers import BertConfig, BertModel
 from torch.optim import Adam
-from stats import get_longest_sequence_size
+
+from scratch_model import RibonanzaTransformer
 
 src_vocab_size = 2
 tgt_vocab_size = 2
@@ -20,6 +19,10 @@ dropout = 0.1
 class Ribonanza(pl.LightningModule):
     def __init__(self, lr=0.0001):
         super().__init__()
+        # configuration = BertConfig()
+        # configuration.vocab_size = 32
+        # configuration.hidden_dropout_prob = 0
+        # self.model = BertModel(configuration)
 
         self.model = RibonanzaTransformer(
             src_vocab_size,
@@ -98,7 +101,7 @@ class Ribonanza(pl.LightningModule):
         optimizer = Adam(self.model.parameters(), lr=self.lr)
         return optimizer
 
-    def predict_step(self, batch, batch_idx: int, dataloader_idx: int):
+    def predict_step(self, batch, batch_idx: int):
         seq, target = zip(*batch)
         seq = torch.stack(seq).to("cuda:0")  # mock target used only for mask
         target = torch.stack(target).to("cuda:0")

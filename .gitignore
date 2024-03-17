@@ -16,3 +16,4 @@ tb_logs/
 .venv/
 __pycache__/
 *.parquet/
+data/

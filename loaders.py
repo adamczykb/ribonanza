@@ -1,10 +1,7 @@
 import pickle
-import pandas as pd
 
-from tqdm import tqdm
-from data_types import Sequence, SequenceEntity,ResidueType
+from data_types import Sequence, ResidueType
 from dataset import RibonanzaDataset
-from pyspark.sql.functions import arrays_zip, col, explode, concat_ws, split
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as sf
 
@@ -22,34 +19,17 @@ def load(path: str) -> list[Sequence]:
 
 def load_dataset(sequences: list[Sequence]) -> RibonanzaDataset:
     filtered_sequences = sorted(
-        [j for j in i.sequences if len(j.sequence) > 15 for i in sequences],
-        key=lambda l: (len(l.sequence), len(l.sequence)),
+        [i for i in sequences if len(i.sequence) > 15],
+        key=lambda sequence: len(sequence.sequence),
     )
     return RibonanzaDataset(filtered_sequences)
 
 
-def create_dataset_based_on_parquet(path: str):
-    spark = (
-        SparkSession.builder.appName("ribonanza")
-        .config("spark.driver.memory", "10g")
-        .getOrCreate()
-    )
-    df = spark.read.parquet(path)
-    df = (
-        df.select("sequence_id", "nucleotide", "pairing", "reactivity")
-        .groupby("sequence_id")
-        .agg(
-            sf.collect_list(sf.struct("nucleotide", "pairing")).alias("tokens"),
-            sf.collect_list("reactivity").alias("reactivity"),
-        )
-        .withColumn("length",sf.size("tokens"))
-        .select("sequence_id", "tokens", "reactivity","length")
-        .sort(sf.asc("length"))
-    )
-    list_of_sequences: list[Sequence] = []
-    for row in df.rdd.collect():
-        list_of_sequences.append(row["sequence_id"])
-    return RibonanzaDataset(list_of_sequences)
+def create_dataset_from_hdf5(
+    path_train_h5: str, path_val_h5: str
+) -> tuple[RibonanzaDataset, RibonanzaDataset]:
+
+    return RibonanzaDataset(path_train_h5), RibonanzaDataset(path_val_h5)
 
 
 def parse_feature(df):
@@ -75,7 +55,7 @@ def parse_feature(df):
         )
         .withColumn(
             "reactivity",
-            sf.when(sf.col("reactivity") < 0, 0).otherwise(col("reactivity")),
+            sf.when(sf.col("reactivity") < 0, 0).otherwise(sf.col("reactivity")),
         )
         .replace(
             {
@@ -97,10 +77,10 @@ def parse_feature(df):
         )
         .replace(
             {
-                "A": ResidueType.ADEINE,
-                "T": ResidueType.THYMINE,
-                "G": ResidueType.GUANINE,
-                "U": ResidueType.URACIL,
+                "A": str(ResidueType.ADEINE.value),
+                "C": str(ResidueType.CYTHOSINE.value),
+                "G": str(ResidueType.GUANINE.value),
+                "U": str(ResidueType.URACIL.value),
             },
             subset=["nucleotide"],
         )
@@ -110,6 +90,38 @@ def parse_feature(df):
             "reactivity",
             sf.col("pairing").cast("int").alias("pairing"),
         )
+    )
+
+
+def order_and_save(df, save_file_name):
+    df = (
+        df.select("sequence_id", "nucleotide", "pairing", "reactivity")
+        .groupby("sequence_id")
+        .agg(
+            sf.collect_list(sf.struct("nucleotide", "pairing")).alias("tokens"),
+            sf.collect_list("reactivity").alias("reactivity"),
+        )
+        .withColumn("length", sf.size("tokens"))
+        .select("sequence_id", "tokens", "reactivity", "length")
+        .sort(sf.asc("length"))
+    )
+    train_df, val_df = df.randomSplit([0.8, 0.2], 1357)
+    train_df = train_df.select("sequence_id", "tokens", "reactivity", "length").sort(
+        sf.asc("length")
+    )
+    val_df = val_df.select("sequence_id", "tokens", "reactivity", "length").sort(
+        sf.asc("length")
+    )
+
+    train_df.select("sequence_id", "tokens", "reactivity", "length").sort(
+        sf.asc("length")
+    ).toPandas().to_hdf(
+        "./data/{}_train.h5".format(save_file_name), key="sequence_id", mode="w"
+    )
+    val_df.select("sequence_id", "tokens", "reactivity", "length").sort(
+        sf.asc("length")
+    ).toPandas().to_hdf(
+        "./data/{}_val.h5".format(save_file_name), key="sequence_id", mode="w"
     )
 
 
@@ -139,63 +151,36 @@ def load_kaggle_dataset(path):
         spark.read.format("csv")
         .option("header", "true")
         .option("inferSchema", "true")
-        .load("/data/data/csv/PK50_silico_predictions.csv")
+        .load("./data/csv/PK50_silico_predictions.csv")
         .withColumnRenamed("hotknots_mfe", "hotknots")["sequence", "hotknots"]
     )
     pk90_df = (
         spark.read.format("csv")
         .option("header", "true")
         .option("inferSchema", "true")
-        .load("/data/data/csv/PK90_silico_predictions.csv")
+        .load("./data/csv/PK90_silico_predictions.csv")
         .withColumnRenamed("hotknots_mfe", "hotknots")["sequence", "hotknots"]
     )
     r1_df = (
         spark.read.format("csv")
         .option("header", "true")
         .option("inferSchema", "true")
-        .load("/data/data/csv/R1_silico_predictions.csv")["sequence", "hotknots"]
+        .load("./data/csv/R1_silico_predictions.csv")["sequence", "hotknots"]
     )
     gpn15k_df = (
         spark.read.format("csv")
         .option("header", "true")
         .option("inferSchema", "true")
-        .load("/data/data/csv/GPN15k_silico_predictions.csv")["sequence", "hotknots"]
+        .load("./data/csv/GPN15k_silico_predictions.csv")["sequence", "hotknots"]
     )
 
     pairing = pk50_df.union(pk90_df).union(r1_df).union(gpn15k_df)
 
     df_2A3 = parse_feature(df_2A3.join(pairing, on="sequence"))
     df_DMS = parse_feature(df_DMS.join(pairing, on="sequence"))
-    df_2A3.write.parquet("/data/data/parsed_2a3.parquet", mode="overwrite")
-    df_DMS.write.parquet("/data/data/parsed_dms.parquet", mode="overwrite")
+    order_and_save(df_2A3, "parsed_2a3")
+    order_and_save(df_DMS, "parsed_dms")
 
-    # with pd.read_csv(path, chunksize=10**6) as reader:
-    #     for chunk in tqdm(reader):
-    #         structure = pd.DataFrame({})
-    #         temp = pd.DataFrame({})
-    #         temp["sequence"] = list(chunk["sequence"])
 
-    #         structure = pd.concat(
-    #             [
-    #                 pd.get_dummies(
-    #                     pd.Categorical(
-    #                         temp["sequence"].replace(
-    #                             {"A": "P", "G": "P", "C": "Y", "U": "Y"}, regex=True
-    #                         ),
-    #                         categories=["P", "Y"],
-    #                     )
-    #                 ).astype(int),
-    #             ],
-    #             axis=1,
-    #         )
-    #         sequence_entities = []
-    #         for index, row in structure.iterrows():
-    #             sequence_entities.append(SequenceEntity(P=row.P, Y=row.Y, dms=0, _a3=0))
-    #         temp_o.append(
-    #             Sequence(
-    #                 start=chunk["id_min"],
-    #                 stop=chunk["id_max"],
-    #                 sequence=sequence_entities,
-    #             )
-    #         )
-    # return RibonanzaDataset(temp_o, eval=True)
+if __name__ == "__main__":
+    load_kaggle_dataset("./data/csv/train_data_QUICK_START.csv")

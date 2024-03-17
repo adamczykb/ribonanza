@@ -19,7 +19,6 @@ NUM_ACCUMULATION_STEPS = 200
 
 
 class Test:
-
     def collate_fn(self, data):
         features, targets = zip(*data)
         max_len = max([i.shape[0] for i in features])

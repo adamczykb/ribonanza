@@ -1,32 +1,25 @@
-import torch
 from torch.utils.data import Dataset
-from data_types import Sequence
+import torch
+from data_types import SequenceEntity
+import pandas as pd
+import numpy as np
 
 
 class RibonanzaDataset(Dataset):
-    def __init__(self, sequences: list[Sequence], evaluation: bool = False):
-
-        self.sequences = torch.tensor(
-            [[j.getOneHot() for j in i.sequence] for i in sequences], dtype=torch.float
-        )
-        if evaluation:
-            self.targets = []
-            self.attention_mask = torch.tensor(
-                [[1 for j in i.sequence] for i in sequences], dtype=torch.float
-            )
-        else:
-            self.attention_mask = torch.tensor(
-                [[1 for j in i.sequence] for i in sequences], dtype=torch.float
-            )
-            self.targets = torch.tensor(
-                [[j.value for j in i.sequence] for i in sequences], dtype=torch.float
-            )
+    def __init__(self, hdf5_path):
+        self.df = pd.read_hdf(hdf5_path, "sequence_id", "r")
+        self.max_seq = 200  # cuz
+        self.evaluation = False
 
     def __len__(self):
-        return len(self.sequences)
+        return self.df.count()
 
     def __getitem__(self, idx):
-        sequence = self.sequences[idx]
-        target = self.targets[idx]
-        attention_mask = self.attention_mask[idx]
+        sequence = [
+            SequenceEntity(el["nucleotide"], el["pairing"], 0)
+            for el in self.df["tokens"][idx]
+        ]
+        target = self.df["reactivity"][idx]
+        sequence = torch.tensor([i.getOneHot() for i in sequence], dtype=torch.float)
+        attention_mask = torch.tensor(np.ones(len(sequence)), dtype=torch.float)
         return sequence, target, attention_mask

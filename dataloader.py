@@ -1,41 +1,6 @@
 import torch
 import pytorch_lightning as pl
-
-from dataclasses import dataclass
-from data import load, load_dataset, load_eval_dataset
 from torch.utils.data import DataLoader, random_split
-
-
-@dataclass
-class SequenceEntity:
-    P: int
-    Y: int
-    dms: int
-    _a3: int
-
-    def __str__(self):
-        return "{0} {1} {2}".format(self.P, self.Y, self.dms, self._a3)
-
-
-@dataclass
-class Sequence:
-    sequence: list[SequenceEntity]
-    start: int = 0
-    stop: int = 0
-
-    def __len__(self):
-        return len(self.sequence)
-
-    def __str__(self):
-        return str([str(i) for i in self.sequence])
-
-
-@dataclass
-class SequenceFile:
-    sequences: list[Sequence]
-
-    def __str__(self):
-        return str([str(i) for i in self.sequences])
 
 
 class RibonanzaDataModule(pl.LightningDataModule):
@@ -59,8 +24,8 @@ class RibonanzaDataModule(pl.LightningDataModule):
         """
         features, targets = zip(*data)
         max_len = max([i.shape[0] for i in features])
-        new_shaped_feature = torch.zeros(len(data), max_len, 2)
-        new_shaped_target = torch.zeros(len(data), max_len, 2)
+        new_shaped_feature = torch.zeros(len(data), max_len, features.shape[1])
+        new_shaped_target = torch.zeros(len(data), max_len, targets.shape[1])
 
         for i in range(len(data)):
             j, k = data[i][0].size(0), data[i][0].size(1)
@@ -74,7 +39,6 @@ class RibonanzaDataModule(pl.LightningDataModule):
         return zip(new_shaped_feature, new_shaped_target)
 
     def prepare_data(self):
-        new_a = load("/home/adamczykb/projects/stanford/data/processed.pkl")
         if self.train:
             _2a3 = load_dataset(new_a)
             # self.train_data = torch.utils.data.Subset(_2a3, range((len(_2a3) // 5) * 4))
