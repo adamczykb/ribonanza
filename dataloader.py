@@ -1,7 +1,6 @@
 import torch
-from data import load, load_dataset, load_eval_dataset
-from torch.utils.data import DataLoader
 import pytorch_lightning as pl
+from torch.utils.data import DataLoader, random_split
 
 
 class RibonanzaDataModule(pl.LightningDataModule):
@@ -25,8 +24,8 @@ class RibonanzaDataModule(pl.LightningDataModule):
         """
         features, targets = zip(*data)
         max_len = max([i.shape[0] for i in features])
-        new_shaped_feature = torch.zeros(len(data), max_len, 2)
-        new_shaped_target = torch.zeros(len(data), max_len, 2)
+        new_shaped_feature = torch.zeros(len(data), max_len, features.shape[1])
+        new_shaped_target = torch.zeros(len(data), max_len, targets.shape[1])
 
         for i in range(len(data)):
             j, k = data[i][0].size(0), data[i][0].size(1)
@@ -40,18 +39,17 @@ class RibonanzaDataModule(pl.LightningDataModule):
         return zip(new_shaped_feature, new_shaped_target)
 
     def prepare_data(self):
-        new_a = load("/opt/proj/data/processed.pkl")
         if self.train:
             _2a3 = load_dataset(new_a)
-            self.train_data = torch.utils.data.Subset(_2a3, range((len(_2a3) // 5) * 4))
-            self.test_data = torch.utils.data.Subset(
-                _2a3, range((len(_2a3) // 5) * 4, len(_2a3))
-            )
-            # train, test = torch.utils.data(
-            #     _2a3, [0.8, 0.2], generator=torch.Generator().manual_seed(42)
+            # self.train_data = torch.utils.data.Subset(_2a3, range((len(_2a3) // 5) * 4))
+            # self.test_data = torch.utils.data.Subset(
+            #     _2a3, range((len(_2a3) // 5) * 4, len(_2a3))
             # )
-            # self.train_data = train
-            # self.test_data = test
+            train, test = random_split(
+                _2a3, [0.8, 0.2], generator=torch.Generator().manual_seed(42)
+            )
+            self.train_data = train
+            self.test_data = test
         else:
             tmp = load_eval_dataset("./test_sequences.csv", part=self.part)
             self.eval_data = tmp[0]

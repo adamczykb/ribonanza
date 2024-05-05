@@ -8,7 +8,7 @@ import multiprocessing as mp
 import numpy as np
 import pytorch_lightning as pl
 import numpy as np
-from model import RibonanzaTransformer
+from scratch_model import RibonanzaTransformer
 from ribonanza_data_module import RibonanzaDataModule
 import torch.optim as optim
 from torch.utils.data import DataLoader
@@ -43,39 +43,6 @@ def collate_fn(data):
             [data[i][1], torch.zeros((max_len - j, k)).fill_(-5)]
         )
     return new_shaped_feature, new_shaped_target
-
-
-class SequenceEntity:
-    def __str__(self):
-        return "{0} {1} {2} {3} {4}".format(
-            self.P, self.Y, self.dms, self.hotknots_p, self.hotknots_u
-        )
-
-    def __init__(self, P, Y, dms, hotknots_p, hotknots_u):
-        self.P = P
-        self.Y = Y
-        self.dms = dms
-        self.hotknots_p = hotknots_p
-        self.hotknots_u = hotknots_u
-
-
-class Sequence:
-    def __len__(self):
-        return len(self.sequence)
-
-    def __str__(self):
-        return str([str(i) for i in self.sequence])
-
-    def __init__(self, sequence: list[SequenceEntity]):
-        self.sequence = sequence
-
-
-class SequenceFile:
-    def __str__(self):
-        return str([str(i) for i in self.sequences])
-
-    def __init__(self, sequences: list[Sequence]):
-        self.sequences = sequences
 
 
 def predict(sequence, model_2a3, model_dms, id_from):

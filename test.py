@@ -1,18 +1,14 @@
 import time
 import torch
-from lightning_train import RibonanzaLightning
 import pytorch_lightning as pl
+
+from lightning_train import RibonanzaLightning
 from ribonanza_data_module import RibonanzaDataModule
 from data import load, load_dataset, load_eval_dataset
 from torch.utils.data import DataLoader
 
 
 def collate_fn(data):
-    """
-    data: is a list of tuples with (example, label, length)
-            where 'example' is a tensor of arbitrary shape
-            and label/length are scalars
-    """
     features, targets = zip(*data)
     max_len = max([i.shape[0] for i in features])
     new_shaped_feature = torch.zeros(len(data), max_len, 2)
@@ -32,7 +28,7 @@ def collate_fn(data):
 if __name__ == "__main__":
     torch.set_float32_matmul_precision("high")
 
-    model = RibonanzaLightning(lr=0.00001)
+    model = RibonanzaLightning(lr=0.001)
 
     first_batch = DataLoader(
         load_dataset(load("/opt/proj/data/processed_tiny.pkl")),
